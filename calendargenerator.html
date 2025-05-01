@@ -5,8 +5,11 @@
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
   <title>Outlook Calendar Link Generator</title>
   <style>
+
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans&display=swap');
+
     body {
-      font-family: sans-serif;
+      font-family: "Work Sans", sans-serif;
       max-width: 600px;
       margin: auto;
       padding: 20px;
@@ -30,7 +33,7 @@
   </style>
 </head>
 <body>
-  <h2>Outlook Calendar Link Generator</h2>
+  <h2>Kelvan Outlook Calendar Link Generator</h2>
 
   <label>Event Title</label>
   <input type="text" id="subject" placeholder="e.g. NZSL Event" />
@@ -50,6 +53,7 @@
   <button onclick="generateAndCopyLink()">Generate & Copy Link</button>
 
   <div id="output"></div>
+  <p>Please contact ITSupport@kotakrueo.school.nz for assistance</p>
 
   <script>
     function generateAndCopyLink() {
