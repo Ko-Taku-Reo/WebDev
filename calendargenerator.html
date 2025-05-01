@@ -4,71 +4,104 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <title>Outlook Calendar Link Generator</title>
+  <title>Add to Calendar - WebDev</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Work+Sans&display=swap');
+    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');
 
-@import url('https://fonts.googleapis.com/css2?family=Work+Sans&display=swap');
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');
-
-
-    body {
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
       font-family: "Work Sans", sans-serif;
-      max-width: 600px;
-      margin: auto;
-      padding: 20px;
     }
-    textarea, input {
+
+    .background {
+      background-image: url('assets/bg.png'); /* Replace with your image path */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      height: 100vh;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .content {
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 20px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      border-radius: 10px;
+      color: #000;
+    }
+
+    input, textarea {
       width: 100%;
       margin-bottom: 10px;
       padding: 6px;
       font-family: inherit;
     }
+
+    button {
+      padding: 6px 12px;
+      margin-right: 5px;
+      cursor: pointer;
+    }
+
     #output {
-      word-break: break-all;
+      word-break: break-word;
       margin-top: 10px;
       padding: 10px;
       background: #f0f0f0;
     }
-    button {
-      padding: 6px 12px;
-      margin-right: 5px;
+
+    a, a.visited {
+      text-decoration: none;
+      color: #000;
+      font-weight: bold;
     }
-a, a.visited {
-    text-decoration: none;
-    color: #000;
-    font-weight: bold;
-}
-a:hover {
-    text-decoration: underline;
-    color: #333;
-}
-    
+
+    a:hover {
+      text-decoration: underline;
+      color: #333;
+    }
+
+    #copyBtn i {
+      font-size: 1.2em;
+    }
   </style>
 </head>
 <body>
-  <h2>Kelvan Outlook Calendar Link Generator</h2>
+  <div class="background">
+    <div class="content">
+      <h2>Add to my calendar - Link Creator</h2>
 
-  <i class="fa-solid fa-thumbtack"></i> <label>Event Title</label>
-  <input type="text" id="subject" placeholder="e.g. NZSL Event" />
+      <i class="fa-solid fa-thumbtack"></i> <label>Event Title</label>
+      <input type="text" id="subject" placeholder="e.g. NZSL Event" />
 
-  <i class="fa fa-clock"></i> <label>Start Time</label>
-  <input type="datetime-local" id="startdt" />
+      <i class="fa fa-clock"></i> <label>Start Time</label>
+      <input type="datetime-local" id="startdt" />
 
-  <i class="fa fa-clock"></i> <label>End Time</label>
-  <input type="datetime-local" id="enddt" />
+      <i class="fa fa-clock"></i> <label>End Time</label>
+      <input type="datetime-local" id="enddt" />
 
-  <i class="fa fa-map-marker"></i> <label>Location</label>
-  <input type="text" id="location" placeholder="e.g. Zoom" />
+      <i class="fa fa-map-marker"></i> <label>Location</label>
+      <input type="text" id="location" placeholder="e.g. Zoom" />
 
-  <i class="fa-solid fa-comment"></i> <label>Event Description</label>
-  <textarea id="body" rows="5" placeholder="Zoom Link - Kelvan Page - ..."></textarea>
+      <i class="fa-solid fa-comment"></i> <label>Event Description</label>
+      <textarea id="body" rows="5" placeholder="Zoom Link - Kelvan Page - ..."></textarea>
 
-  <button onclick="generateAndCopyLink()">Generate & Copy Link</button>
+<button onclick="generateAndCopyLink()"><i class="fa-regular fa-clipboard"></i> Generate & Copy Link</button>
 
   <div id="output"></div>
-  <p>Please contact <i class="fa fa-envelope"></i> <a href="mailto:ITSupport@kotakrueo.school.nz?subject=Calendar Link Generator">ITSupport</a> for assistance</p>
 
-  <script>
+  <p>Please contact <i class="fa fa-envelope"></i> <a href="/cdn-cgi/l/email-protection#ca839e99bfbabaa5b8be8aa1a5beaba1b8bfafa5e4b9a9a2a5a5a6e4a4b0f5b9bfa8a0afa9bef789aba6afa4aeabb8ea86a3a4a1ea8dafa4afb8abbea5b8">ITSupport</a> for assistance</p>
+
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     function generateAndCopyLink() {
       const subject = encodeURIComponent(document.getElementById('subject').value);
       const startdt = new Date(document.getElementById('startdt').value).toISOString();
@@ -82,7 +115,7 @@ a:hover {
       const link = `https://outlook.office.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&startdt=${startdt}&enddt=${enddt}&subject=${subject}&body=${body}&location=${location}`;
 
       document.getElementById('output').innerHTML = `
-        <p><strong>Link:</strong></p>
+        <p><strong>Test it out!:</strong></p>
         <p><a href="${link}" target="_blank">${link}</a></p>`;
 
       navigator.clipboard.writeText(link).then(() => {
