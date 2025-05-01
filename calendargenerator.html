@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <title>Outlook Calendar Link Generator</title>
   <style>
 
@@ -35,25 +36,25 @@
 <body>
   <h2>Kelvan Outlook Calendar Link Generator</h2>
 
-  <label>Event Title</label>
+  <i class="fa-solid fa-thumbtack"></i> <label>Event Title</label>
   <input type="text" id="subject" placeholder="e.g. NZSL Event" />
 
-  <label>Start Time</label>
+  <i class="fa fa-clock"></i> <label>Start Time</label>
   <input type="datetime-local" id="startdt" />
 
-  <label>End Time</label>
+  <i class="fa fa-clock"></i> <label>End Time</label>
   <input type="datetime-local" id="enddt" />
 
-  <label>Location</label>
+  <i class="fa fa-map-marker"></i> <label>Location</label>
   <input type="text" id="location" placeholder="e.g. Zoom" />
 
-  <label>Event Description</label>
+  <i class="fa-solid fa-comment"></i> <label>Event Description</label>
   <textarea id="body" rows="5" placeholder="Zoom Link - Kelvan Page - ..."></textarea>
 
   <button onclick="generateAndCopyLink()">Generate & Copy Link</button>
 
   <div id="output"></div>
-  <p>Please contact ITSupport@kotakrueo.school.nz for assistance</p>
+  <p>Please contact <i class="fa fa-envelope"></i> <a href="mailto:ITSupport@kotakrueo.school.nz?subject=Calendar Link Generator">ITSupport</a> for assistance</p>
 
   <script>
     function generateAndCopyLink() {
