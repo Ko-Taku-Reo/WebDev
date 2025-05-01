@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Outlook Calendar Link Generator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+    }
+    textarea, input {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 6px;
+      font-family: inherit;
+    }
+    #output {
+      word-break: break-all;
+      margin-top: 10px;
+      padding: 10px;
+      background: #f0f0f0;
+    }
+    button {
+      padding: 6px 12px;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Outlook Calendar Link Generator</h2>
+
+  <label>Event Title</label>
+  <input type="text" id="subject" placeholder="e.g. NZSL Event" />
+
+  <label>Start Time</label>
+  <input type="datetime-local" id="startdt" />
+
+  <label>End Time</label>
+  <input type="datetime-local" id="enddt" />
+
+  <label>Location</label>
+  <input type="text" id="location" placeholder="e.g. Zoom" />
+
+  <label>Event Description</label>
+  <textarea id="body" rows="5" placeholder="Use multiple lines with Enter key..."></textarea>
+
+  <button onclick="generateAndCopyLink()">Generate & Copy Link</button>
+
+  <div id="output"></div>
+
+  <script>
+    function generateAndCopyLink() {
+      const subject = encodeURIComponent(document.getElementById('subject').value);
+      const startdt = new Date(document.getElementById('startdt').value).toISOString();
+      const enddt = new Date(document.getElementById('enddt').value).toISOString();
+      const location = encodeURIComponent(document.getElementById('location').value);
+
+      // Replace newlines with <br> for Outlook Web compatibility
+      const rawBody = document.getElementById('body').value.replace(/\n/g, '<br>');
+      const body = encodeURIComponent(rawBody);
+
+      const link = `https://outlook.office.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&startdt=${startdt}&enddt=${enddt}&subject=${subject}&body=${body}&location=${location}`;
+
+      document.getElementById('output').innerHTML = `
+        <p><strong>Link:</strong></p>
+        <p><a href="${link}" target="_blank">${link}</a></p>`;
+
+      navigator.clipboard.writeText(link).then(() => {
+        alert('Link copied to clipboard!');
+      });
+    }
+  </script>
+</body>
+</html>
