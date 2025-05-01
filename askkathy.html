@@ -123,11 +123,11 @@
   <div class="chat-wrapper">
     <header>
       <div>Ask Kathy</div>
-      <!-- <select id="modelSelect">
+      <select id="modelSelect">
         <option value="gpt-4o-mini">GPT-4o Mini</option>
         <option value="gpt-4o">GPT-4o</option>
         <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-      </select> -->
+      </select>
     </header>
 
     <div id="chat"></div>
@@ -175,8 +175,7 @@
       const userMessage = input.value.trim();
       if (!userMessage) return;
 
-      //const model = document.getElementById("modelSelect").value;
-      const model = "gpt-4o-mini";
+      const model = document.getElementById("modelSelect").value;
       appendMessage(userMessage, "user");
       input.value = "";
 
