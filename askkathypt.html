@@ -183,6 +183,8 @@
 
   <script>
     const API_URL = "https://small-tree-4d55.daniel-sherratt.workers.dev";
+    const GOOGLE_API_KEY = "AIzaSyB8MlP8U2gBAXFZ1Nqx2jnKFugAbpZSOZ8";  // Replace with your Google API Key
+    const CSE_ID = "574e5b545fba141d1";  // Replace with your Custom Search Engine ID
     const chatContainer = document.getElementById("chat");
     const input = document.getElementById("userInput");
 
@@ -213,102 +215,87 @@
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-async function sendMessage() {
-  const userMessage = input.value.trim();
-  if (!userMessage) return;
+    async function sendMessage() {
+      const userMessage = input.value.trim();
+      if (!userMessage) return;
 
-  appendMessage(userMessage, "user");
-  input.value = "";
+      appendMessage(userMessage, "user");
+      input.value = "";
 
-  // Get last 10 messages from localStorage history
-  const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
-  const context = [...history.slice(-9), { role: "user", content: userMessage }];
+      // Get last 10 messages from localStorage history
+      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
+      const context = [...history.slice(-9), { role: "user", content: userMessage }];
 
-  // Detect if the message is related to code or needs a web search
-  const isCodePrompt = /```|function|<script>|class |const |def |import /.test(userMessage.toLowerCase());
-  const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
+      // Detect if the message is related to code or needs a web search
+      const isCodePrompt = /```|function|<script>|class |const |def |import /.test(userMessage.toLowerCase());
+      const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
 
-  // Check if the message seems to need real-time info (web search)
-  const isSearchQuery = /who|what|where|when|why|current|today|in the news|latest/i.test(userMessage);
+      // Check if the message seems to need real-time info (web search)
+      const isSearchQuery = /who|what|where|when|why|current|today|in the news|latest/i.test(userMessage);
 
-  if (isSearchQuery) {
-    // Only perform a search if the message is a valid search query
-    const query = encodeURIComponent(userMessage);
+      if (isSearchQuery) {
+        // Trigger Google Custom Search if the message is a search query
+        const query = encodeURIComponent(userMessage);
+        const googleSearchUrl = `https://www.googleapis.com/customsearch/v1?q=${query}&key=${GOOGLE_API_KEY}&cx=${CSE_ID}`;
 
-    if (query.length > 0) {
-      try {
-        // DuckDuckGo Search
-        const searchRes = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1&no_html=1&t=kathypt`);
+        const searchRes = await fetch(googleSearchUrl);
         const searchData = await searchRes.json();
 
-        // If DuckDuckGo provides a relevant abstract or topic, use it
-        const snippet = searchData.AbstractText || searchData.RelatedTopics?.[0]?.Text || "No relevant information found.";
+        // Check if search results are available
+        const snippet = searchData.items ? searchData.items[0]?.snippet : "No relevant information found.";
         
-        // Check if the snippet is empty or not helpful
-        if (snippet === "No relevant information found.") {
-          appendMessage("**Sorry, no relevant results were found.**", "bot");
-        } else {
-          appendMessage(`**Search Result:**\n${snippet}`, "bot");
-        }
+        appendMessage(`**Search Result:**\n${snippet}`, "bot");
 
-        // Add search result to context
+        // Add search result to context for continuity
         context.push({ role: "system", content: `Search Result: ${snippet}` });
-      } catch (err) {
-        console.error("Error fetching search results from DuckDuckGo:", err);
-        appendMessage("**Error fetching search results.**", "bot");
       }
-    }
-  }
 
-  // Proceed to make the request to the assistant API
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: selectedModel,
-      messages: context,
-      stream: true
-    }),
-  });
+      // Make request to the API with model and context (including search result if needed)
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: context,
+          stream: true
+        }),
+      });
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let fullResponse = "";
-  const botMsg = document.createElement("div");
-  botMsg.className = "message bot";
-  chatContainer.appendChild(botMsg);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = "";
+      const botMsg = document.createElement("div");
+      botMsg.className = "message bot";
+      chatContainer.appendChild(botMsg);
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split("\n").filter(line => line.startsWith("data:"));
-    for (const line of lines) {
-      const data = line.replace(/^data:\s*/, "");
-      if (data === "[DONE]") break;
-      try {
-        const parsed = JSON.parse(data);
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) {
-          fullResponse += delta;
-          botMsg.innerHTML = formatMarkdown(fullResponse);
-          hljs.highlightAll();
-          chatContainer.scrollTop = chatContainer.scrollHeight;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter(line => line.startsWith("data:"));
+        for (const line of lines) {
+          const data = line.replace(/^data:\s*/, "");
+          if (data === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              fullResponse += delta;
+              botMsg.innerHTML = formatMarkdown(fullResponse);
+              hljs.highlightAll();
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+          } catch (err) {
+            console.error("Stream error:", err);
+          }
         }
-      } catch (err) {
-        console.error("Stream error:", err);
       }
+
+      // Save to history
+      history.push({ role: "user", content: userMessage });
+      history.push({ role: "assistant", content: fullResponse });
+      localStorage.setItem("kathypt-history", JSON.stringify(history));
     }
-  }
-
-  // Save to history
-  history.push({ role: "user", content: userMessage });
-  history.push({ role: "assistant", content: fullResponse });
-  localStorage.setItem("kathypt-history", JSON.stringify(history));
-}
-
-
-
 
     function copyCode(id) {
       const code = document.getElementById(id);
