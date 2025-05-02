@@ -228,23 +228,33 @@ async function sendMessage() {
   const isCodePrompt = /```|function|<script>|class |const |def |import /.test(userMessage.toLowerCase());
   const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
 
-  // Automatically detect if the message sounds like a query that needs real-time information (i.e., a web search)
+  // Check if the message seems to need real-time info (web search)
   const isSearchQuery = /who|what|where|when|how|why|current|today|in the news|latest/i.test(userMessage);
 
   if (isSearchQuery) {
-    // If the message seems like a search query, use DuckDuckGo to fetch results
+    // Trigger a DuckDuckGo search if the message is a search query
     const query = encodeURIComponent(userMessage);
-    const searchRes = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1&no_html=1&t=kathypt`);
-    const searchData = await searchRes.json();
 
-    // Get the relevant snippet from DuckDuckGo's response
-    const snippet = searchData.AbstractText || searchData.RelatedTopics?.[0]?.Text || "No relevant information found.";
+    try {
+      const searchRes = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1&no_html=1&t=kathypt`);
+      const searchData = await searchRes.json();
 
-    // Display the search result in the chat
-    appendMessage(`**Search Result:**\n${snippet}`, "bot");
+      // Check if the DuckDuckGo API has returned useful data
+      if (searchData.AbstractText || searchData.RelatedTopics?.[0]?.Text) {
+        // Use AbstractText or RelatedTopics as the search result
+        const snippet = searchData.AbstractText || searchData.RelatedTopics?.[0]?.Text || "No relevant information found.";
+        appendMessage(`**Search Result:**\n${snippet}`, "bot");
 
-    // Add the search result to context
-    context.push({ role: "system", content: `Search Result: ${snippet}` });
+        // Add search result to context for continuity
+        context.push({ role: "system", content: `Search Result: ${snippet}` });
+      } else {
+        // If no useful information, give feedback
+        appendMessage("**No relevant search result found.**", "bot");
+      }
+    } catch (err) {
+      console.error("Error fetching search results from DuckDuckGo:", err);
+      appendMessage("**Error fetching search results.**", "bot");
+    }
   }
 
   // Make request to the API with the model and context (including search result if needed)
@@ -293,6 +303,7 @@ async function sendMessage() {
   history.push({ role: "assistant", content: fullResponse });
   localStorage.setItem("kathypt-history", JSON.stringify(history));
 }
+
 
 
     function copyCode(id) {
