@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Ask KathyPt</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -18,15 +18,18 @@
       --bot-bg: #f1f1f1;
       --bot-bg-dark: #2a2a2a;
     }
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
       font-family: Arial, sans-serif;
       background: var(--bg-light);
       color: var(--text-light);
+      height: 100%;
+    }
+    body {
       display: flex;
       justify-content: center;
-      align-items: center;
-      height: 100vh;
+      align-items: stretch;
       transition: background 0.3s, color 0.3s;
     }
     .dark {
@@ -38,11 +41,10 @@
       flex-direction: column;
       width: 100%;
       max-width: 800px;
-      height: 95vh;
+      height: 100dvh;
       background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      overflow: hidden;
+      border-radius: 0;
+      box-shadow: none;
     }
     .dark .chat-wrapper {
       background: #121212;
@@ -51,25 +53,25 @@
       background: #343541;
       color: white;
       padding: 12px 20px;
-      font-size: 1.5em;
+      font-size: 1.2em;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
     }
     #chat {
       flex: 1;
-      padding: 20px;
+      padding: 10px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
     }
     .message {
-      margin: 10px 0;
-      padding: 12px 16px;
-      border-radius: 12px;
-      max-width: 80%;
-      white-space: pre-wrap;
-      word-wrap: break-word;
+      margin: 6px 0;
+      padding: 10px;
+      border-radius: 10px;
+      max-width: 90%;
+      word-break: break-word;
       position: relative;
     }
     .user {
@@ -88,27 +90,30 @@
     }
     footer {
       display: flex;
-      padding: 12px;
+      gap: 8px;
+      padding: 10px;
       background: #f9f9f9;
       border-top: 1px solid #ccc;
-      gap: 10px;
     }
     textarea {
       flex: 1;
-      padding: 10px;
+      padding: 8px;
       font-size: 1em;
       border-radius: 6px;
       border: 1px solid #ccc;
       resize: none;
+      max-height: 200px;
     }
     button {
-      padding: 10px 12px;
-      font-size: 0.9em;
+      padding: 10px;
+      font-size: 1em;
       border: none;
       border-radius: 6px;
       background-color: #343541;
       color: white;
       cursor: pointer;
+      min-width: 44px;
+      min-height: 44px;
     }
     button:hover {
       background-color: #4a4c56;
@@ -137,154 +142,18 @@
     .copy-btn:hover {
       background: #666;
     }
+    @media (max-width: 600px) {
+      header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      footer {
+        flex-direction: column;
+      }
+      button {
+        width: 100%;
+      }
+    }
   </style>
 </head>
-<body>
-  <div class="chat-wrapper">
-    <header>
-      Ask KathyPt
-      <div>
-        <button onclick="toggleTheme()" title="Toggle Theme"><i class="fas fa-adjust"></i></button>
-        <button onclick="clearHistory()" title="Clear History"><i class="fas fa-trash"></i></button>
-      </div>
-    </header>
-
-    <div id="chat"></div>
-
-    <footer>
-      <textarea id="userInput" rows="2" placeholder="How can Kathy help you today?"></textarea>
-      <button onclick="sendMessage()">Send</button>
-    </footer>
-  </div>
-
-  <script>
-    const API_URL = "https://small-tree-4d55.daniel-sherratt.workers.dev";
-    const chatContainer = document.getElementById("chat");
-    const input = document.getElementById("userInput");
-    
-    function escapeHtml(str) {
-      return str.replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-    }
-
-    function formatMarkdown(text) {
-      text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-      text = text.replace(/^### (.*)$/gm, "<h1>$1</h1>");
-      text = text.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width:100%; margin-top:10px;">');
-      text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
-      text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
-        const id = "code-" + Math.random().toString(36).substring(2, 10);
-        return `<pre><button class="copy-btn" onclick="copyCode('${id}')">Copy</button><code id="${id}" class="language-${lang || 'plaintext'}">${escapeHtml(code.trim())}</code></pre>`;
-      });
-      return text;
-    }
-
-    function appendMessage(content, role) {
-      const msg = document.createElement("div");
-      msg.className = `message ${role}`;
-      msg.innerHTML = formatMarkdown(content);
-      chatContainer.appendChild(msg);
-      hljs.highlightAll();
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    async function sendMessage() {
-      const userMessage = input.value.trim();
-      if (!userMessage) return;
-
-      appendMessage(userMessage, "user");
-      input.value = "";
-
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: userMessage }],
-          stream: true
-        }),
-      });
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = "";
-      const botMsg = document.createElement("div");
-      botMsg.className = "message bot";
-      chatContainer.appendChild(botMsg);
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter(line => line.startsWith("data:"));
-        for (const line of lines) {
-          const data = line.replace(/^data:\s*/, "");
-          if (data === "[DONE]") break;
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              fullResponse += delta;
-              botMsg.innerHTML = formatMarkdown(fullResponse);
-              hljs.highlightAll();
-              chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-          } catch (err) {
-            console.error("Stream error:", err);
-          }
-        }
-      }
-
-      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
-      history.push({ role: "user", content: userMessage });
-      history.push({ role: "assistant", content: fullResponse });
-      localStorage.setItem("kathypt-history", JSON.stringify(history));
-    }
-
-    function copyCode(id) {
-      const code = document.getElementById(id);
-      if (!code) return;
-      navigator.clipboard.writeText(code.textContent).then(() => {
-        const btn = code.previousElementSibling;
-        btn.textContent = "Copied!";
-        setTimeout(() => btn.textContent = "Copy", 2000);
-      });
-    }
-
-    function toggleTheme() {
-      document.body.classList.toggle("dark");
-      localStorage.setItem("kathypt-theme", document.body.classList.contains("dark") ? "dark" : "light");
-    }
-
-    function clearHistory() {
-      localStorage.removeItem("kathypt-history");
-      chatContainer.innerHTML = "";
-    }
-
-    input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && !e.ctrlKey) {
-        e.preventDefault();
-        sendMessage();
-      } else if (e.key === "Enter" && e.ctrlKey) {
-        e.preventDefault();
-        const cursor = input.selectionStart;
-        const value = input.value;
-        input.value = value.slice(0, cursor) + "\n" + value.slice(cursor);
-        input.selectionStart = input.selectionEnd = cursor + 1;
-      }
-    });
-    
-    window.addEventListener("DOMContentLoaded", () => {
-  input.focus();
-      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
-      for (const msg of history) {
-        appendMessage(msg.content, msg.role === "user" ? "user" : "bot");
-      }
-      if (localStorage.getItem("kathypt-theme") === "dark") {
-        document.body.classList.add("dark");
-      }
-    });
-  </script>
-</body>
-</html>
