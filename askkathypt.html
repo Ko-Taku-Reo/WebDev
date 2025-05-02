@@ -229,35 +229,38 @@ async function sendMessage() {
   const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
 
   // Check if the message seems to need real-time info (web search)
-  const isSearchQuery = /who|what|where|when|how|why|current|today|in the news|latest/i.test(userMessage);
+  const isSearchQuery = /who|what|where|when|why|current|today|in the news|latest/i.test(userMessage);
 
   if (isSearchQuery) {
-    // Trigger a DuckDuckGo search if the message is a search query
+    // Only perform a search if the message is a valid search query
     const query = encodeURIComponent(userMessage);
 
-    try {
-      const searchRes = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1&no_html=1&t=kathypt`);
-      const searchData = await searchRes.json();
+    if (query.length > 0) {
+      try {
+        // DuckDuckGo Search
+        const searchRes = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1&no_html=1&t=kathypt`);
+        const searchData = await searchRes.json();
 
-      // Check if the DuckDuckGo API has returned useful data
-      if (searchData.AbstractText || searchData.RelatedTopics?.[0]?.Text) {
-        // Use AbstractText or RelatedTopics as the search result
+        // If DuckDuckGo provides a relevant abstract or topic, use it
         const snippet = searchData.AbstractText || searchData.RelatedTopics?.[0]?.Text || "No relevant information found.";
-        appendMessage(`**Search Result:**\n${snippet}`, "bot");
+        
+        // Check if the snippet is empty or not helpful
+        if (snippet === "No relevant information found.") {
+          appendMessage("**Sorry, no relevant results were found.**", "bot");
+        } else {
+          appendMessage(`**Search Result:**\n${snippet}`, "bot");
+        }
 
-        // Add search result to context for continuity
+        // Add search result to context
         context.push({ role: "system", content: `Search Result: ${snippet}` });
-      } else {
-        // If no useful information, give feedback
-        appendMessage("**No relevant search result found.**", "bot");
+      } catch (err) {
+        console.error("Error fetching search results from DuckDuckGo:", err);
+        appendMessage("**Error fetching search results.**", "bot");
       }
-    } catch (err) {
-      console.error("Error fetching search results from DuckDuckGo:", err);
-      appendMessage("**Error fetching search results.**", "bot");
     }
   }
 
-  // Make request to the API with the model and context (including search result if needed)
+  // Proceed to make the request to the assistant API
   const res = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -303,6 +306,7 @@ async function sendMessage() {
   history.push({ role: "assistant", content: fullResponse });
   localStorage.setItem("kathypt-history", JSON.stringify(history));
 }
+
 
 
 
