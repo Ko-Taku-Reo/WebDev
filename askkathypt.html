@@ -43,8 +43,6 @@
       max-width: 800px;
       height: 100dvh;
       background: #fff;
-      border-radius: 0;
-      box-shadow: none;
     }
     .dark .chat-wrapper {
       background: #121212;
@@ -143,18 +141,15 @@
       background: #666;
     }
     .thinking::after {
-  content: '.';
-  display: inline-block;
-  animation: typingDots 1.2s steps(1, end) infinite;
-}
+      content: '.';
+      display: inline-block;
+      animation: typingDots 1.2s steps(1, end) infinite;
+    }
     @keyframes typingDots {
-  0% { content: '.'; }
-  33% { content: '..'; }
-  66% { content: '...'; }
-  100% { content: '.'; }
-}
-      50% { opacity: 1; }
-      100% { opacity: 0.2; }
+      0% { content: '.'; }
+      33% { content: '..'; }
+      66% { content: '...'; }
+      100% { content: '.'; }
     }
     @media (max-width: 600px) {
       header {
@@ -171,3 +166,180 @@
     }
   </style>
 </head>
+<body>
+  <div class="chat-wrapper">
+    <header>
+      Ask KathyPt
+      <div>
+        <button onclick="toggleTheme()" title="Toggle Theme"><i class="fas fa-adjust"></i></button>
+        <button onclick="clearHistory()" title="Clear History"><i class="fas fa-trash"></i></button>
+      </div>
+    </header>
+
+    <div id="chat"></div>
+
+    <footer>
+      <textarea id="userInput" rows="2" placeholder="Ask Kathy Something"></textarea>
+      <button onclick="sendMessage()">Send</button>
+    </footer>
+  </div>
+
+  <script>
+    const API_URL = "https://small-tree-4d55.daniel-sherratt.workers.dev";
+    const chatContainer = document.getElementById("chat");
+    const input = document.getElementById("userInput");
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+    }
+
+    function formatMarkdown(text) {
+      text = text.replace(/\\*\\*(.*?)\\*\\*/g, "<strong>$1</strong>");
+      text = text.replace(/^### (.*)$/gm, "<h1>$1</h1>");
+      text = text.replace(/!\\[(.*?)\\]\\((.*?)\\)/g, '<img src="$2" alt="$1" style="max-width:100%; margin-top:10px;">');
+      text = text.replace(/\\[(.*?)\\]\\((.*?)\\)/g, '<a href="$2" target="_blank">$1</a>');
+      text = text.replace(/```(\\w+)?\\n([\\s\\S]*?)```/g, (_, lang, code) => {
+        const id = "code-" + Math.random().toString(36).substring(2, 10);
+        return `<pre><button class="copy-btn" onclick="copyCode('${id}')">Copy</button><code id="${id}" class="language-${lang || 'plaintext'}">${escapeHtml(code.trim())}</code></pre>`;
+      });
+      return text;
+    }
+
+    function appendMessage(content, role) {
+      const msg = document.createElement("div");
+      msg.className = `message ${role}`;
+      msg.innerHTML = formatMarkdown(content);
+      chatContainer.appendChild(msg);
+      hljs.highlightAll();
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const userMessage = input.value.trim();
+      if (!userMessage) return;
+
+      appendMessage(userMessage, "user");
+      input.value = "";
+
+      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
+      const context = [...history.slice(-9), { role: "user", content: userMessage }];
+
+      const tempRes = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "system", content: "If the user prompt needs current info or real-time facts, reply only with: SEARCH: followed by the topic." }, ...context],
+          stream: false
+        })
+      });
+
+      const tempData = await tempRes.json();
+      const reply = tempData.choices?.[0]?.message?.content;
+
+      if (reply?.startsWith("SEARCH:")) {
+        const query = encodeURIComponent(reply.replace("SEARCH:", "").trim());
+        const searchRes = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1&no_html=1&t=kathypt`);
+        const searchData = await searchRes.json();
+        const snippet = searchData.Abstract || searchData.RelatedTopics?.[0]?.Text || "No info found.";
+        appendMessage(`**Search Result:**\n${snippet}`, "bot");
+        context.push({ role: "system", content: `Search Result: ${snippet}` });
+      }
+
+      const isCodePrompt = /```|function|<script>|class |const |def |import /.test(userMessage.toLowerCase());
+      const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: context,
+          stream: true
+        })
+      });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = "";
+      const botMsg = document.createElement("div");
+      botMsg.className = "message bot";
+      botMsg.innerHTML = "<em class='thinking'>Thinking</em>";
+      chatContainer.appendChild(botMsg);
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\\n").filter(line => line.startsWith("data:"));
+        for (const line of lines) {
+          const data = line.replace(/^data:\\s*/, "");
+          if (data === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              fullResponse += delta;
+              botMsg.innerHTML = formatMarkdown(fullResponse);
+              hljs.highlightAll();
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+          } catch (err) {
+            console.error("Stream error:", err);
+          }
+        }
+      }
+
+      history.push({ role: "user", content: userMessage });
+      history.push({ role: "assistant", content: fullResponse });
+      localStorage.setItem("kathypt-history", JSON.stringify(history));
+    }
+
+    function copyCode(id) {
+      const code = document.getElementById(id);
+      if (!code) return;
+      navigator.clipboard.writeText(code.textContent).then(() => {
+        const btn = code.previousElementSibling;
+        btn.textContent = "Copied!";
+        setTimeout(() => btn.textContent = "Copy", 2000);
+      });
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle("dark");
+      localStorage.setItem("kathypt-theme", document.body.classList.contains("dark") ? "dark" : "light");
+    }
+
+    function clearHistory() {
+      localStorage.removeItem("kathypt-history");
+      chatContainer.innerHTML = "";
+    }
+
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.ctrlKey) {
+        e.preventDefault();
+        sendMessage();
+      } else if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
+        const cursor = input.selectionStart;
+        const value = input.value;
+        input.value = value.slice(0, cursor) + "\\n" + value.slice(cursor);
+        input.selectionStart = input.selectionEnd = cursor + 1;
+      }
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
+      for (const msg of history) {
+        appendMessage(msg.content, msg.role === "user" ? "user" : "bot");
+      }
+      if (localStorage.getItem("kathypt-theme") === "dark") {
+        document.body.classList.add("dark");
+      }
+      input.focus();
+    });
+  </script>
+</body>
+</html>
