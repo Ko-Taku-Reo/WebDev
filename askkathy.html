@@ -21,7 +21,7 @@
       flex-direction: column;
       width: 100%;
       max-width: 800px;
-      height: 95vh;
+      height:  95vh;
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
@@ -123,17 +123,12 @@
   <div class="chat-wrapper">
     <header>
       <div>Ask KathyPt</div>
-      <!-- <select id="modelSelect">
-        <option value="gpt-4o-mini">GPT-4o Mini</option>
-        <option value="gpt-4o">GPT-4o</option>
-        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-      </select> -->
     </header>
 
     <div id="chat"></div>
 
     <footer>
-      <textarea id="userInput" rows="2" placeholder="Ask something... (Ctrl+Enter to send)"></textarea>
+      <textarea id="userInput" rows="2" placeholder="Ask something... (Enter to send, Ctrl+Enter for newline)"></textarea>
       <button onclick="sendMessage()">Send</button>
     </footer>
   </div>
@@ -202,14 +197,18 @@
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split("\n").filter(line => line.startsWith("data:"));
         for (const line of lines) {
-          const data = line.replace(/^data:\s*/, ""); // ✅ Strip "data:" prefix
+          const data = line.replace(/^data:\s*/, "");
           if (data === "[DONE]") break;
           try {
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta?.content;
             if (delta) {
               fullResponse += delta;
-              botMsg.innerHTML = formatMarkdown(fullResponse);
+              let displayText = fullResponse.trim();
+              if (!displayText.endsWith("let me know how else I can assist, KathyPt")) {
+                displayText += "\n\nLet me know how else I can assist, KathyPt";
+              }
+              botMsg.innerHTML = formatMarkdown(displayText);
               hljs.highlightAll();
               chatContainer.scrollTop = chatContainer.scrollHeight;
             }
@@ -231,9 +230,15 @@
     }
 
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && e.ctrlKey) {
+      if (e.key === "Enter" && !e.ctrlKey) {
         e.preventDefault();
         sendMessage();
+      } else if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
+        const cursor = input.selectionStart;
+        const value = input.value;
+        input.value = value.slice(0, cursor) + "\n" + value.slice(cursor);
+        input.selectionStart = input.selectionEnd = cursor + 1;
       }
     });
   </script>
