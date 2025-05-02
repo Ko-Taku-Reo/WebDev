@@ -152,7 +152,7 @@
     <div id="chat"></div>
 
     <footer>
-      <textarea id="userInput" rows="2" placeholder="Ask Kathy Something"></textarea>
+      <textarea id="userInput" rows="2" placeholder="How can Kathy help you today?"></textarea>
       <button onclick="sendMessage()">Send</button>
     </footer>
   </div>
@@ -161,7 +161,7 @@
     const API_URL = "https://small-tree-4d55.daniel-sherratt.workers.dev";
     const chatContainer = document.getElementById("chat");
     const input = document.getElementById("userInput");
-
+    
     function escapeHtml(str) {
       return str.replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
@@ -274,7 +274,9 @@
         input.selectionStart = input.selectionEnd = cursor + 1;
       }
     });
-
+    
+window.addEventListener("DOMContentLoaded", () => {
+  input.focus();
     window.addEventListener("DOMContentLoaded", () => {
       const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
       for (const msg of history) {
