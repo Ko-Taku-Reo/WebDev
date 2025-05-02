@@ -224,12 +224,26 @@
       const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
       const context = [...history.slice(-9), { role: "user", content: userMessage }];
 
+      // Check if the message is code-related or requires web search
+      const isCodePrompt = /```|function|<script>|class |const |def |import /.test(userMessage.toLowerCase());
+      const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
+
+      if (/search:|lookup:|current/.test(userMessage.toLowerCase())) {
+        // Trigger a DuckDuckGo search if the message is a search query
+        const query = encodeURIComponent(userMessage.replace(/^search:|lookup:/, "").trim());
+        const searchRes = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1&no_html=1&t=kathypt`);
+        const searchData = await searchRes.json();
+        const snippet = searchData.Abstract || searchData.RelatedTopics?.[0]?.Text || "No info found.";
+        appendMessage(`**Search Result:**\n${snippet}`, "bot");
+        context.push({ role: "system", content: `Search Result: ${snippet}` });
+      }
+
       // Make request to the API
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: selectedModel,
           messages: context,
           stream: true
         }),
