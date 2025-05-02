@@ -7,14 +7,29 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
+    :root {
+      --bg-light: #f0f2f5;
+      --bg-dark: #1e1e1e;
+      --text-light: #000;
+      --text-dark: #fff;
+      --user-bg: #007bff;
+      --bot-bg: #f1f1f1;
+      --bot-bg-dark: #2a2a2a;
+    }
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #f0f2f5;
+      background: var(--bg-light);
+      color: var(--text-light);
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+    .dark {
+      background: var(--bg-dark);
+      color: var(--text-dark);
     }
     .chat-wrapper {
       display: flex;
@@ -27,14 +42,17 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
       overflow: hidden;
     }
+    .dark .chat-wrapper {
+      background: #121212;
+    }
     header {
       background: #343541;
       color: white;
       padding: 12px 20px;
       font-size: 1.5em;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
     }
     #chat {
       flex: 1;
@@ -53,20 +71,25 @@
       position: relative;
     }
     .user {
-      background-color: #007bff;
+      background-color: var(--user-bg);
       color: white;
       align-self: flex-end;
     }
     .bot {
-      background-color: #f1f1f1;
-      color: #000;
+      background-color: var(--bot-bg);
+      color: black;
       align-self: flex-start;
+    }
+    .dark .bot {
+      background-color: var(--bot-bg-dark);
+      color: white;
     }
     footer {
       display: flex;
       padding: 12px;
       background: #f9f9f9;
       border-top: 1px solid #ccc;
+      gap: 10px;
     }
     textarea {
       flex: 1;
@@ -77,9 +100,8 @@
       resize: none;
     }
     button {
-      margin-left: 10px;
-      padding: 10px 16px;
-      font-size: 1em;
+      padding: 10px 12px;
+      font-size: 0.9em;
       border: none;
       border-radius: 6px;
       background-color: #343541;
@@ -119,6 +141,10 @@
   <div class="chat-wrapper">
     <header>
       Ask KathyPt
+      <div>
+        <button onclick="toggleTheme()">Toggle Theme</button>
+        <button onclick="clearHistory()">Clear History</button>
+      </div>
     </header>
 
     <div id="chat"></div>
@@ -208,7 +234,6 @@
         }
       }
 
-      // Save response to local storage history
       const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
       history.push({ role: "user", content: userMessage });
       history.push({ role: "assistant", content: fullResponse });
@@ -225,6 +250,16 @@
       });
     }
 
+    function toggleTheme() {
+      document.body.classList.toggle("dark");
+      localStorage.setItem("kathypt-theme", document.body.classList.contains("dark") ? "dark" : "light");
+    }
+
+    function clearHistory() {
+      localStorage.removeItem("kathypt-history");
+      chatContainer.innerHTML = "";
+    }
+
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.ctrlKey) {
         e.preventDefault();
@@ -238,11 +273,13 @@
       }
     });
 
-    // Load history on page load
     window.addEventListener("DOMContentLoaded", () => {
       const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
       for (const msg of history) {
         appendMessage(msg.content, msg.role === "user" ? "user" : "bot");
+      }
+      if (localStorage.getItem("kathypt-theme") === "dark") {
+        document.body.classList.add("dark");
       }
     });
   </script>
