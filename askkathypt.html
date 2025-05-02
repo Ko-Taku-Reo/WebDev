@@ -105,7 +105,7 @@
       cursor: pointer;
     }
     button:hover {
-      background-color: #4a4c56;
+      background-color:  var(--bot-bg-dark);
     }
     pre {
       background: #2d2d2d;
@@ -162,7 +162,6 @@
     <header>
       Ask KathyPt
       <div>
-        <button onclick="toggleTheme()" title="Toggle Theme"><i class="fas fa-adjust"></i></button>
         <button onclick="clearHistory()" title="Clear History"><i class="fas fa-trash"></i></button>
       </div>
     </header>
@@ -208,93 +207,95 @@
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    async function sendMessage() {
-      const userMessage = input.value.trim();
-      if (!userMessage) return;
+async function sendMessage() {
+  const userMessage = input.value.trim();
+  if (!userMessage) return;
 
-      appendMessage(userMessage, "user");
-      input.value = "";
+  appendMessage(userMessage, "user");
+  input.value = "";
 
-      // Get last 10 messages from localStorage history
-      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
-      const context = [...history.slice(-9), { role: "user", content: userMessage }];
+  // Get last 10 messages from localStorage history
+  const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
+  const context = [...history.slice(-9), { role: "user", content: userMessage }];
 
-      // Detect if the message is related to code or needs a web search
-      const isCodePrompt = /```|function|<script>|class |const |def |import /.test(userMessage.toLowerCase());
-      const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
+  // Detect if the message is related to code or needs a web search
+  const isCodePrompt = /```|function|<script>|class |const |def |import /.test(userMessage.toLowerCase());
+  const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
 
-      // Check if the message seems to need real-time info (web search)
-      const isSearchQuery = /who|what|where|when|how|why|current|today|in the news|latest/i.test(userMessage);
+  // Check if the message seems to need real-time info (web search)
+  const isSearchQuery = /who|what|where|when|how|why|current|today|in the news|latest/i.test(userMessage);
 
-      if (isSearchQuery) {
-        // Trigger the Cloudflare Worker to perform Google Custom Search
-        const query = encodeURIComponent(userMessage);
-        const workerUrl = `${WORKER_URL}?q=${query}`;
+  if (isSearchQuery) {
+    // Trigger the Cloudflare Worker to perform Google Custom Search
+    const query = encodeURIComponent(userMessage); // URL-encode the query
 
-        try {
-          const searchRes = await fetch(workerUrl);
-          const searchData = await searchRes.text();
+    // Ensure `+` is used instead of `%20` for spaces
+    const workerUrl = `https://patient-sun-a16a.daniel-sherratt.workers.dev?q=${query.replace(/%20/g, '+')}`;
 
-          // Display the search result
-          appendMessage(`**Search Result:**\n${searchData}`, "bot");
+    try {
+      const searchRes = await fetch(workerUrl);
+      const searchData = await searchRes.text(); // Get response as plain text
 
-          // Add search result to context for continuity
-          context.push({ role: "system", content: `Search Result: ${searchData}` });
+      // Display the search result
+      appendMessage(`**Search Result:**\n${searchData}`, "bot");
 
-          // Skip the model request if we found a valid search result
-          return;
-        } catch (err) {
-          console.error("Error fetching search results from Cloudflare Worker:", err);
-          appendMessage("**Error fetching search results.**", "bot");
-        }
-      }
+      // Add search result to context for continuity
+      context.push({ role: "system", content: `Search Result: ${searchData}` });
 
-      // If no search result, continue with model request
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: context,
-          stream: true
-        }),
-      });
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = "";
-      const botMsg = document.createElement("div");
-      botMsg.className = "message bot";
-      chatContainer.appendChild(botMsg);
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter(line => line.startsWith("data:"));
-        for (const line of lines) {
-          const data = line.replace(/^data:\s*/, "");
-          if (data === "[DONE]") break;
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              fullResponse += delta;
-              botMsg.innerHTML = formatMarkdown(fullResponse);
-              hljs.highlightAll();
-              chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-          } catch (err) {
-            console.error("Stream error:", err);
-          }
-        }
-      }
-
-      // Save to history
-      history.push({ role: "user", content: userMessage });
-      history.push({ role: "assistant", content: fullResponse });
-      localStorage.setItem("kathypt-history", JSON.stringify(history));
+      // Skip the model request if we found a valid search result
+      return;
+    } catch (err) {
+      console.error("Error fetching search results from Cloudflare Worker:", err);
+      appendMessage("**Error fetching search results.**", "bot");
     }
+  }
+
+  // If no search result, continue with model request
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: selectedModel,
+      messages: context,
+      stream: true
+    }),
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let fullResponse = "";
+  const botMsg = document.createElement("div");
+  botMsg.className = "message bot";
+  chatContainer.appendChild(botMsg);
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n").filter(line => line.startsWith("data:"));
+    for (const line of lines) {
+      const data = line.replace(/^data:\s*/, "");
+      if (data === "[DONE]") break;
+      try {
+        const parsed = JSON.parse(data);
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullResponse += delta;
+          botMsg.innerHTML = formatMarkdown(fullResponse);
+          hljs.highlightAll();
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+      } catch (err) {
+        console.error("Stream error:", err);
+      }
+    }
+  }
+
+  // Save to history
+  history.push({ role: "user", content: userMessage });
+  history.push({ role: "assistant", content: fullResponse });
+  localStorage.setItem("kathypt-history", JSON.stringify(history));
+}
 
     function copyCode(id) {
       const code = document.getElementById(id);
