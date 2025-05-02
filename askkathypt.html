@@ -213,77 +213,87 @@
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    async function sendMessage() {
-      const userMessage = input.value.trim();
-      if (!userMessage) return;
+async function sendMessage() {
+  const userMessage = input.value.trim();
+  if (!userMessage) return;
 
-      appendMessage(userMessage, "user");
-      input.value = "";
+  appendMessage(userMessage, "user");
+  input.value = "";
 
-      // Get last 10 messages from localStorage history
-      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
-      const context = [...history.slice(-9), { role: "user", content: userMessage }];
+  // Get last 10 messages from localStorage history
+  const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
+  const context = [...history.slice(-9), { role: "user", content: userMessage }];
 
-      // Check if the message is code-related or requires web search
-      const isCodePrompt = /```|function|<script>|class |const |def |import /.test(userMessage.toLowerCase());
-      const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
+  // Detect if the message is related to code or needs a web search
+  const isCodePrompt = /```|function|<script>|class |const |def |import /.test(userMessage.toLowerCase());
+  const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
 
-      if (/search:|lookup:|current/.test(userMessage.toLowerCase())) {
-        // Trigger a DuckDuckGo search if the message is a search query
-        const query = encodeURIComponent(userMessage.replace(/^search:|lookup:/, "").trim());
-        const searchRes = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1&no_html=1&t=kathypt`);
-        const searchData = await searchRes.json();
-        const snippet = searchData.Abstract || searchData.RelatedTopics?.[0]?.Text || "No info found.";
-        appendMessage(`**Search Result:**\n${snippet}`, "bot");
-        context.push({ role: "system", content: `Search Result: ${snippet}` });
-      }
+  // Automatically detect if the message sounds like a query that needs real-time information (i.e., a web search)
+  const isSearchQuery = /who|what|where|when|how|why|current|today|in the news|latest/i.test(userMessage);
 
-      // Make request to the API
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: context,
-          stream: true
-        }),
-      });
+  if (isSearchQuery) {
+    // If the message seems like a search query, use DuckDuckGo to fetch results
+    const query = encodeURIComponent(userMessage);
+    const searchRes = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1&no_html=1&t=kathypt`);
+    const searchData = await searchRes.json();
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = "";
-      const botMsg = document.createElement("div");
-      botMsg.className = "message bot";
-      chatContainer.appendChild(botMsg);
+    // Get the relevant snippet from DuckDuckGo's response
+    const snippet = searchData.AbstractText || searchData.RelatedTopics?.[0]?.Text || "No relevant information found.";
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter(line => line.startsWith("data:"));
-        for (const line of lines) {
-          const data = line.replace(/^data:\s*/, "");
-          if (data === "[DONE]") break;
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              fullResponse += delta;
-              botMsg.innerHTML = formatMarkdown(fullResponse);
-              hljs.highlightAll();
-              chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-          } catch (err) {
-            console.error("Stream error:", err);
-          }
+    // Display the search result in the chat
+    appendMessage(`**Search Result:**\n${snippet}`, "bot");
+
+    // Add the search result to context
+    context.push({ role: "system", content: `Search Result: ${snippet}` });
+  }
+
+  // Make request to the API with the model and context (including search result if needed)
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: selectedModel,
+      messages: context,
+      stream: true
+    }),
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let fullResponse = "";
+  const botMsg = document.createElement("div");
+  botMsg.className = "message bot";
+  chatContainer.appendChild(botMsg);
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n").filter(line => line.startsWith("data:"));
+    for (const line of lines) {
+      const data = line.replace(/^data:\s*/, "");
+      if (data === "[DONE]") break;
+      try {
+        const parsed = JSON.parse(data);
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullResponse += delta;
+          botMsg.innerHTML = formatMarkdown(fullResponse);
+          hljs.highlightAll();
+          chatContainer.scrollTop = chatContainer.scrollHeight;
         }
+      } catch (err) {
+        console.error("Stream error:", err);
       }
-
-      // Save to history
-      history.push({ role: "user", content: userMessage });
-      history.push({ role: "assistant", content: fullResponse });
-      localStorage.setItem("kathypt-history", JSON.stringify(history));
     }
+  }
+
+  // Save to history
+  history.push({ role: "user", content: userMessage });
+  history.push({ role: "assistant", content: fullResponse });
+  localStorage.setItem("kathypt-history", JSON.stringify(history));
+}
+
 
     function copyCode(id) {
       const code = document.getElementById(id);
