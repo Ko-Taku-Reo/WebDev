@@ -131,17 +131,7 @@
     .copy-btn:hover {
       background: #666;
     }
-    .thinking::after {
-      content: '.';
-      display: inline-block;
-      animation: typingDots 1.2s steps(1, end) infinite;
-    }
-    @keyframes typingDots {
-      0% { content: '.'; }
-      33% { content: '..'; }
-      66% { content: '...'; }
-      100% { content: '.'; }
-    }
+    
     @media (max-width: 600px) {
       header {
         flex-direction: column;
@@ -155,6 +145,7 @@
         width: 100%;
       }
     }
+    a, a.visited {color: var(--user-bg);}
   </style>
 </head>
 <body>
