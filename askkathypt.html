@@ -137,6 +137,30 @@
     .copy-btn:hover {
       background: #666;
     }
+    .thinking::after {
+      content: '.';
+      display: inline-block;
+      animation: typingDots 1.2s steps(1, end) infinite;
+    }
+    @keyframes typingDots {
+      0% { content: '.'; }
+      33% { content: '..'; }
+      66% { content: '...'; }
+      100% { content: '.'; }
+    }
+    @media (max-width: 600px) {
+      header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      footer {
+        flex-direction: column;
+      }
+      button {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -196,12 +220,17 @@
       appendMessage(userMessage, "user");
       input.value = "";
 
+      // Get last 10 messages from localStorage history
+      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
+      const context = [...history.slice(-9), { role: "user", content: userMessage }];
+
+      // Make request to the API
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "user", content: userMessage }],
+          messages: context,
           stream: true
         }),
       });
@@ -236,7 +265,7 @@
         }
       }
 
-      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
+      // Save to history
       history.push({ role: "user", content: userMessage });
       history.push({ role: "assistant", content: fullResponse });
       localStorage.setItem("kathypt-history", JSON.stringify(history));
@@ -276,7 +305,7 @@
     });
 
     window.addEventListener("DOMContentLoaded", () => {
-  input.focus();
+      input.focus();
       const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
       for (const msg of history) {
         appendMessage(msg.content, msg.role === "user" ? "user" : "bot");
