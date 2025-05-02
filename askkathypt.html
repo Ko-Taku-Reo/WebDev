@@ -5,22 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Ask KathyPt</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
     :root {
       --bg-light: #f0f2f5;
-      --bg-dark: #1e1e1e;
+      --bg-dark: #003541;
       --text-light: #000;
       --text-dark: #fff;
-      --user-bg: #007bff;
-      --bot-bg: #f1f1f1;
-      --bot-bg-dark: #2a2a2a;
+      --user-bg: #00625f; /* Bottle Green */
+      --bot-bg: #6bbaae;  /* Turquoise */
+      --bot-bg-dark: #003541; /* Dark Teal */
+      --highlight-text: #72a546; /* Green */
     }
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
+      font-family: 'Work Sans', sans-serif;
       background: var(--bg-light);
       color: var(--text-light);
       display: flex;
@@ -28,10 +30,6 @@
       align-items: center;
       height: 100vh;
       transition: background 0.3s, color 0.3s;
-    }
-    .dark {
-      background: var(--bg-dark);
-      color: var(--text-dark);
     }
     .chat-wrapper {
       display: flex;
@@ -44,11 +42,8 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
       overflow: hidden;
     }
-    .dark .chat-wrapper {
-      background: #121212;
-    }
     header {
-      background: #343541;
+      background: var(--user-bg);
       color: white;
       padding: 12px 20px;
       font-size: 1.5em;
@@ -82,9 +77,8 @@
       color: black;
       align-self: flex-start;
     }
-    .dark .bot {
-      background-color: var(--bot-bg-dark);
-      color: white;
+    .bot-highlight {
+      color: var(--highlight-text);
     }
     footer {
       display: flex;
@@ -106,7 +100,7 @@
       font-size: 0.9em;
       border: none;
       border-radius: 6px;
-      background-color: #343541;
+      background-color: var(--user-bg);
       color: white;
       cursor: pointer;
     }
@@ -181,10 +175,9 @@
     </footer>
   </div>
 
-  <script>
+    <script>
     const API_URL = "https://small-tree-4d55.daniel-sherratt.workers.dev";
-    const GOOGLE_API_KEY = "AIzaSyB8MlP8U2gBAXFZ1Nqx2jnKFugAbpZSOZ8";  // Replace with your Google API Key
-    const CSE_ID = "574e5b545fba141d1";  // Replace with your Custom Search Engine ID
+    const WORKER_URL = "https://patient-sun-a16a.daniel-sherratt.workers.dev";  // Cloudflare Worker URL
     const chatContainer = document.getElementById("chat");
     const input = document.getElementById("userInput");
 
@@ -231,26 +224,32 @@
       const selectedModel = isCodePrompt ? "gpt-4o" : "gpt-4o-mini";
 
       // Check if the message seems to need real-time info (web search)
-      const isSearchQuery = /who|what|where|when|why|current|today|in the news|latest/i.test(userMessage);
+      const isSearchQuery = /who|what|where|when|how|why|current|today|in the news|latest/i.test(userMessage);
 
       if (isSearchQuery) {
-        // Trigger Google Custom Search if the message is a search query
+        // Trigger the Cloudflare Worker to perform Google Custom Search
         const query = encodeURIComponent(userMessage);
-        const googleSearchUrl = `https://www.googleapis.com/customsearch/v1?q=${query}&key=${GOOGLE_API_KEY}&cx=${CSE_ID}`;
+        const workerUrl = `${WORKER_URL}?q=${query}`;
 
-        const searchRes = await fetch(googleSearchUrl);
-        const searchData = await searchRes.json();
+        try {
+          const searchRes = await fetch(workerUrl);
+          const searchData = await searchRes.text();
 
-        // Check if search results are available
-        const snippet = searchData.items ? searchData.items[0]?.snippet : "No relevant information found.";
-        
-        appendMessage(`**Search Result:**\n${snippet}`, "bot");
+          // Display the search result
+          appendMessage(`**Search Result:**\n${searchData}`, "bot");
 
-        // Add search result to context for continuity
-        context.push({ role: "system", content: `Search Result: ${snippet}` });
+          // Add search result to context for continuity
+          context.push({ role: "system", content: `Search Result: ${searchData}` });
+
+          // Skip the model request if we found a valid search result
+          return;
+        } catch (err) {
+          console.error("Error fetching search results from Cloudflare Worker:", err);
+          appendMessage("**Error fetching search results.**", "bot");
+        }
       }
 
-      // Make request to the API with model and context (including search result if needed)
+      // If no search result, continue with model request
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -307,11 +306,6 @@
       });
     }
 
-    function toggleTheme() {
-      document.body.classList.toggle("dark");
-      localStorage.setItem("kathypt-theme", document.body.classList.contains("dark") ? "dark" : "light");
-    }
-
     function clearHistory() {
       localStorage.removeItem("kathypt-history");
       chatContainer.innerHTML = "";
@@ -335,9 +329,6 @@
       const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
       for (const msg of history) {
         appendMessage(msg.content, msg.role === "user" ? "user" : "bot");
-      }
-      if (localStorage.getItem("kathypt-theme") === "dark") {
-        document.body.classList.add("dark");
       }
     });
   </script>
