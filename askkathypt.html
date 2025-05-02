@@ -275,9 +275,8 @@
       }
     });
     
-window.addEventListener("DOMContentLoaded", () => {
-  input.focus();
     window.addEventListener("DOMContentLoaded", () => {
+  input.focus();
       const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
       for (const msg of history) {
         appendMessage(msg.content, msg.role === "user" ? "user" : "bot");
