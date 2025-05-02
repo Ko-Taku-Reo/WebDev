@@ -21,7 +21,7 @@
       flex-direction: column;
       width: 100%;
       max-width: 800px;
-      height:  95vh;
+      height: 95vh;
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
@@ -31,10 +31,10 @@
       background: #343541;
       color: white;
       padding: 12px 20px;
-      font-size: 1.2em;
+      font-size: 1.5em;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: center;
     }
     #chat {
       flex: 1;
@@ -89,10 +89,6 @@
     button:hover {
       background-color: #4a4c56;
     }
-    select {
-      padding: 6px;
-      border-radius: 6px;
-    }
     pre {
       background: #2d2d2d;
       color: #f8f8f2;
@@ -122,13 +118,13 @@
 <body>
   <div class="chat-wrapper">
     <header>
-      <div>Ask KathyPt</div>
+      Ask KathyPt
     </header>
 
     <div id="chat"></div>
 
     <footer>
-      <textarea id="userInput" rows="2" placeholder="Ask Kathy something..."></textarea>
+      <textarea id="userInput" rows="2" placeholder="Ask something... (Enter to send, Ctrl+Enter for newline)"></textarea>
       <button onclick="sendMessage()">Send</button>
     </footer>
   </div>
@@ -169,8 +165,6 @@
       const userMessage = input.value.trim();
       if (!userMessage) return;
 
-      //const model = document.getElementById("modelSelect").value;
-      const model = "gpt-4o-mini";
       appendMessage(userMessage, "user");
       input.value = "";
 
@@ -178,7 +172,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: model,
+          model: "gpt-4o-mini",
           messages: [{ role: "user", content: userMessage }],
           stream: true
         }),
@@ -204,11 +198,7 @@
             const delta = parsed.choices?.[0]?.delta?.content;
             if (delta) {
               fullResponse += delta;
-              let displayText = fullResponse.trim();
-              if (!displayText.endsWith("As per the staff handbook, KathyPt is your friend")) {
-                displayText += "\n\nAs per the staff handbook, KathyPt is your friend";
-              }
-              botMsg.innerHTML = formatMarkdown(displayText);
+              botMsg.innerHTML = formatMarkdown(fullResponse);
               hljs.highlightAll();
               chatContainer.scrollTop = chatContainer.scrollHeight;
             }
@@ -217,6 +207,12 @@
           }
         }
       }
+
+      // Save response to local storage history
+      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
+      history.push({ role: "user", content: userMessage });
+      history.push({ role: "assistant", content: fullResponse });
+      localStorage.setItem("kathypt-history", JSON.stringify(history));
     }
 
     function copyCode(id) {
@@ -239,6 +235,14 @@
         const value = input.value;
         input.value = value.slice(0, cursor) + "\n" + value.slice(cursor);
         input.selectionStart = input.selectionEnd = cursor + 1;
+      }
+    });
+
+    // Load history on page load
+    window.addEventListener("DOMContentLoaded", () => {
+      const history = JSON.parse(localStorage.getItem("kathypt-history") || "[]");
+      for (const msg of history) {
+        appendMessage(msg.content, msg.role === "user" ? "user" : "bot");
       }
     });
   </script>
