@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Ask Kathy</title>
+  <title>Ask Kathy</title></title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
@@ -123,7 +123,7 @@
   <div class="chat-wrapper">
     <header>
       <div>Ask Kathy</div>
-      <!-- <select id="modelSelect">
+     <!-- <select id="modelSelect">
         <option value="gpt-4o-mini">GPT-4o Mini</option>
         <option value="gpt-4o">GPT-4o</option>
         <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
@@ -133,31 +133,30 @@
     <div id="chat"></div>
 
     <footer>
-      <textarea id="userInput" rows="2" placeholder="Ask Kathy something... (Ctrl+Enter to send)"></textarea>
+      <textarea id="userInput" rows="2" placeholder="Ask something... (Ctrl+Enter to send)"></textarea>
       <button onclick="sendMessage()">Send</button>
     </footer>
   </div>
 
   <script>
-    //const apiKey ="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";
+    const API_URL = "https://small-tree-4d55.daniel-sherratt.workers.dev";
     const chatContainer = document.getElementById("chat");
     const input = document.getElementById("userInput");
 
-    function escapeHtmlForCode(str) {
+    function escapeHtml(str) {
       return str.replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
     }
 
     function formatMarkdown(text) {
-      text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      text = text.replace(/\\*\\*(.*?)\\*\\*/g, "<strong>$1</strong>");
       text = text.replace(/^### (.*)$/gm, "<h1>$1</h1>");
-      text = text.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width:100%; margin-top:10px;">');
-      text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
-      text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+      text = text.replace(/!\\[(.*?)\\]\\((.*?)\\)/g, '<img src="$2" alt="$1" style="max-width:100%; margin-top:10px;">');
+      text = text.replace(/\\[(.*?)\\]\\((.*?)\\)/g, '<a href="$2" target="_blank">$1</a>');
+      text = text.replace(/```(\\w+)?\\n([\\s\\S]*?)```/g, (_, lang, code) => {
         const id = "code-" + Math.random().toString(36).substring(2, 10);
-        const safeCode = escapeHtmlForCode(code.trim());
-        return `<pre><button class="copy-btn" onclick="copyCode('${id}')">Copy</button><code id="${id}" class="language-${lang || 'plaintext'}">${safeCode}</code></pre>`;
+        return `<pre><button class="copy-btn" onclick="copyCode('${id}')">Copy</button><code id="${id}" class="language-${lang || 'plaintext'}">${escapeHtml(code.trim())}</code></pre>`;
       });
       return text;
     }
@@ -175,17 +174,14 @@
       const userMessage = input.value.trim();
       if (!userMessage) return;
 
-      // const model = document.getElementById("modelSelect").value;
+      //const model = document.getElementById("modelSelect").value;
       const model = "gpt-4o-mini";
       appendMessage(userMessage, "user");
       input.value = "";
 
-      const res = await fetch("https://small-tree-4d55.daniel-sherratt.workers.dev/", {
+      const res = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: model,
           messages: [{ role: "user", content: userMessage }],
@@ -204,9 +200,9 @@
         const { value, done } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter(line => line.startsWith("data:"));
+        const lines = chunk.split("\\n").filter(line => line.startsWith("data:"));
         for (const line of lines) {
-          const data = line.replace(/^data:\s*/, "");
+          const data = line.replace(/^data:\\s*/, "");
           if (data === "[DONE]") break;
           try {
             const parsed = JSON.parse(data);
@@ -227,8 +223,7 @@
     function copyCode(id) {
       const code = document.getElementById(id);
       if (!code) return;
-      const text = code.textContent;
-      navigator.clipboard.writeText(text).then(() => {
+      navigator.clipboard.writeText(code.textContent).then(() => {
         const btn = code.previousElementSibling;
         btn.textContent = "Copied!";
         setTimeout(() => btn.textContent = "Copy", 2000);
